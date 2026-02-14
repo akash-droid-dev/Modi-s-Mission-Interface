@@ -29,7 +29,7 @@ function openDB(): Promise<IDBDatabase> {
 
 async function saveToDB(rec: {
   id: string; created_at: string; duration: number;
-  size: number; platform: string; public_url: string; blob_data: string;
+  size: number; platform: string; public_url: string; blob: Blob;
 }) {
   const db = await openDB();
   return new Promise<void>((resolve, reject) => {
@@ -37,18 +37,6 @@ async function saveToDB(rec: {
     tx.objectStore(STORE).put(rec);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
-  });
-}
-
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const result = reader.result as string;
-      resolve(result.split(",")[1]); // strip data:...;base64, prefix
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
   });
 }
 
@@ -148,9 +136,8 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     setDownloadUrl(url);
 
-    // Save to IndexedDB so Admin dashboard can access it
+    // Save to IndexedDB so Admin dashboard can access it (store Blob directly)
     try {
-      const b64 = await blobToBase64(blob);
       await saveToDB({
         id: crypto.randomUUID(),
         created_at: new Date().toISOString(),
@@ -158,7 +145,7 @@ export default function App() {
         size: blob.size,
         platform: "web",
         public_url: "",
-        blob_data: b64,
+        blob,
       });
     } catch (e) {
       console.warn("Could not save to IndexedDB:", e);
