@@ -27,9 +27,18 @@ function openDB(): Promise<IDBDatabase> {
   });
 }
 
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onloadend = () => resolve((r.result as string).split(",")[1]);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
+
 async function saveToDB(rec: {
   id: string; created_at: string; duration: number;
-  size: number; platform: string; public_url: string; blob: Blob;
+  size: number; platform: string; public_url: string; blob: Blob; blob_data?: string;
 }) {
   const db = await openDB();
   return new Promise<void>((resolve, reject) => {
@@ -136,8 +145,9 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     setDownloadUrl(url);
 
-    // Save to IndexedDB so Admin dashboard can access it (store Blob directly)
+    // Save to IndexedDB (blob + base64 fallback for Admin playback)
     try {
+      const blobData = await blobToBase64(blob);
       await saveToDB({
         id: crypto.randomUUID(),
         created_at: new Date().toISOString(),
@@ -146,6 +156,7 @@ export default function App() {
         platform: "web",
         public_url: "",
         blob,
+        blob_data: blobData,
       });
     } catch (e) {
       console.warn("Could not save to IndexedDB:", e);
