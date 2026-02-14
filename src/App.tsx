@@ -75,13 +75,19 @@ export default function App() {
         audio: true,
       });
       streamRef.current = stream;
-      if (videoRef.current) videoRef.current.srcObject = stream;
       setGranted(true);
       setDenied(false);
     } catch {
       setDenied(true);
     }
   }, []);
+
+  // Attach stream to video once element is mounted (video only renders when granted)
+  useEffect(() => {
+    if (granted && streamRef.current && videoRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+    }
+  }, [granted]);
 
   useEffect(() => {
     requestPerms();
